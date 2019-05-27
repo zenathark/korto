@@ -1,0 +1,1 @@
+# [TECH-000] Registration service implementation.

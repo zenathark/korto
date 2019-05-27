@@ -3,10 +3,14 @@ module korto
 go 1.12
 
 require (
+	github.com/flimzy/diff v0.1.5 // indirect
 	github.com/flimzy/kivik v1.8.1 // indirect
+	github.com/flimzy/testy v0.1.16 // indirect
+	github.com/go-kivik/couchdb v1.8.1 // indirect
 	github.com/go-kivik/kivik v1.7.3-0.20190509153003-22b54eda3db0
 	github.com/go-kivik/kivikmock v0.0.0-20190521070649-e4a6edca8be3
 	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/stretchr/testify v1.3.0
+	golang.org/x/net v0.0.0-20190522155817-f3200d17e092 // indirect
 )

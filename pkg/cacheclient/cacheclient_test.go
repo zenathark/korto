@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func newTestRedis() (*radix.Pool, *miniredis.Miniredis) {
+func newTestRedis() (*MemoryCache, *miniredis.Miniredis) {
 	mr, err := miniredis.Run()
 	if err != nil {
 		panic(err)
@@ -17,14 +17,14 @@ func newTestRedis() (*radix.Pool, *miniredis.Miniredis) {
 	if err != nil {
 		panic(err)
 	}
-	return c, mr
+	return WithPool(c), mr
 }
 
 func TestGetLongUrl(t *testing.T) {
 	input := "shorturl"
 	expected := "longurl"
 	c, s := newTestRedis()
-	url, err := GetLongUrl(c, input)
+	url, err := c.GetLongUrl(input)
 	assert.Nil(t, err, "[USE-001-01T01] Error should not be returned if url is not found")
 	assert.NotNil(t, *url, "[USE-001-01T1] Url should not be nil when url not found")
 	assert.Empty(t, *url, "[USE-001-01T1] Url should be empty if not found")
@@ -34,7 +34,7 @@ func TestGetLongUrl(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	url, err = GetLongUrl(c, input)
+	url, err = c.GetLongUrl(input)
 	assert.Nil(t, err, "[USE-001-01T01] Error should not be returned if url is not found")
 	assert.NotNil(t, *url, "[USE-001-01T1] Url should not be nil when url not found")
 	assert.Equal(t, expected, *url, "[USE-001-01T1]")
@@ -46,7 +46,7 @@ func TestPutLongUrl(t *testing.T) {
 	expected := "longurl"
 	notExpectedRewrite := "weirdurl"
 	c, s := newTestRedis()
-	err := PutLongUrl(c, input, expected)
+	err := c.PutLongUrl(input, expected)
 	assert.Nil(t, err, "[USE-006-00T01]")
 	got, err := s.Get(input)
 	if err != nil {
@@ -54,7 +54,7 @@ func TestPutLongUrl(t *testing.T) {
 	}
 	assert.Equal(t, expected, got, "[USE-006-00T01]")
 
-	err = PutLongUrl(c, input, notExpectedRewrite)
+	err = c.PutLongUrl(input, notExpectedRewrite)
 	assert.Nil(t, err, "[USE-006-00T01] Should not return error when saving key/value")
 	got, err = s.Get(input)
 	if err != nil {
@@ -70,7 +70,7 @@ func TestForcePutLongUrl(t *testing.T) {
 	expected := "longurl"
 	expectedRewrite := "weirdurl"
 	c, s := newTestRedis()
-	err := ForcePutLongUrl(c, input, expected)
+	err := c.ForcePutLongUrl(input, expected)
 	assert.Nil(t, err, "[USE-006-00T02]")
 	got, err := s.Get(input)
 	if err != nil {
@@ -78,7 +78,7 @@ func TestForcePutLongUrl(t *testing.T) {
 	}
 	assert.Equal(t, expected, got, "[USE-006-00T02]")
 
-	err = ForcePutLongUrl(c, input, expectedRewrite)
+	err = c.ForcePutLongUrl(input, expectedRewrite)
 	assert.Nil(t, err, "[USE-006-00T02] Should not return error when saving key/value")
 	got, err = s.Get(input)
 	if err != nil {

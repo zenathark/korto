@@ -25,12 +25,16 @@ func generateTestData() *ShortUrlRecord {
 	return &rowTest
 }
 
-func genMockDB() (*kivik.Client, *kivikmock.Client) {
+func genMockDB() (*ShortUrlDB, *kivikmock.DB) {
 	client, mock, err := kivikmock.New()
 	if err != nil {
 		panic(err)
 	}
-	return client, mock
+	testDB := mock.NewDB()
+	mock.ExpectDB().WithName("_korto").WillReturn(testDB)
+	db := client.DB(context.TODO(), "_korto")
+	refDb := WithDatabase(db)
+	return refDb, testDB
 }
 
 //T00
@@ -67,13 +71,10 @@ func TestGenShortUrl(t *testing.T) {
 
 //T03
 func TestExists(t *testing.T) {
-	client, mock := genMockDB()
-	testDB := mock.NewDB()
-	mock.ExpectDB().WithName("_korto").WillReturn(testDB)
+	refDb, testDB := genMockDB()
 	testDB.ExpectGet().WithDocID("short_url").WillReturn(kivikmock.DocumentT(t,
 		`{"_id":"short_url", "long_url":"long_url", "created_at":"2018-09-22T16:35:08+07:00"}`))
-	db := client.DB(context.TODO(), "_korto")
-	_, err := exists(db ,"short_url")
+	_, err := refDb.exists("short_url")
 	assert.Nil(t, err, "[USE-000-02T03] Unable to retrieve expected key: test-url")
 }
 
@@ -83,28 +84,22 @@ func TestSaveUrl(t *testing.T) {
 		ID:        "test_url",
 		LongUrl:   "loong_url",
 		CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)}
-	client, mock := genMockDB()
-	testDB := mock.NewDB()
-	mock.ExpectDB().WithName("_korto").WillReturn(testDB)
+	refDb, testDB := genMockDB()
 	testDB.ExpectPut().WithDocID(data.ID).WillReturn("ok")
-	db := client.DB(context.TODO(), "_korto")
-	err := saveUrl(db, data)
+	err := refDb.saveUrl(data)
 	assert.Nilf(t, err, "[USE-000-02T04] Unable to save new data with msg: %s", err)
 	testDB.ExpectPut().WithDocID(data.ID).WillReturnError(errors.New("test error"))
-	err = saveUrl(db , data)
+	err = refDb.saveUrl(data)
 	assert.NotNilf(t, err, "[USE-000-02T04] Incorrect handling error on db save", err)
 }
 
 //T05
 func TestCommitURLWhenDoesntExists(t *testing.T) {
 	rowTest := generateTestData()
-	client, mock := genMockDB()
-	testDB := mock.NewDB()
-	mock.ExpectDB().WithName("_korto").WillReturn(testDB)
+	refDb, testDB := genMockDB()
 	testDB.ExpectGet().WithDocID(rowTest.ID).WillReturnError(&kivik.Error{HTTPStatus: http.StatusNotFound, Err: nil})
 	testDB.ExpectPut().WithDocID(rowTest.ID).WillReturn("ok")
-	db := client.DB(context.TODO(), "_korto")
-	s, url, err := CommitURL(db, []byte(rowTest.LongUrl))
+	s, url, err := refDb.CommitURL([]byte(rowTest.LongUrl))
 	if err != nil {
 		panic(fmt.Sprintf("[USE-000-02T05] Malformed mock data %s", err))
 	}
@@ -116,12 +111,9 @@ func TestCommitURLWhenDoesntExists(t *testing.T) {
 func TestCommitURLWhenExists(t *testing.T) {
 	rowTest := generateTestData()
 	rowTestAsJson, _ := json.Marshal(rowTest)
-	client, mock := genMockDB()
-	testDB := mock.NewDB()
-	mock.ExpectDB().WithName("_korto").WillReturn(testDB)
+	refDb, testDB := genMockDB()
 	testDB.ExpectGet().WithDocID(rowTest.ID).WillReturn(kivikmock.DocumentT(t, rowTestAsJson))
-	db := client.DB(context.TODO(), "_korto")
-	s, url, err := CommitURL(db, []byte(rowTest.LongUrl))
+	s, url, err := refDb.CommitURL([]byte(rowTest.LongUrl))
 	if err != nil {
 		panic(fmt.Sprintf("[USE-000-02T06] Malformed mock data %s", err))
 	}
@@ -136,17 +128,14 @@ func TestCommitURLWhenColliding(t *testing.T) {
 	secondRowTest.ID = ""
 	firstRowTest.LongUrl = "www.google.test.com" //Fake url that simulates collision
 	firstRowTestAsJson, _ := json.Marshal(firstRowTest)
-	hgen := hash([]byte(secondRowTest.LongUrl))
-	_ = <-hgen
-	followingHash := genShortUrl(<-hgen)
-	client, mock := genMockDB()
-	testDB := mock.NewDB()
-	mock.ExpectDB().WithName("_korto").WillReturn(testDB)
+	hashGenerator := hash([]byte(secondRowTest.LongUrl))
+	_ = <-hashGenerator
+	followingHash := genShortUrl(<-hashGenerator)
+	refDb, testDB := genMockDB()
 	testDB.ExpectGet().WithDocID(firstRowTest.ID).WillReturn(kivikmock.DocumentT(t, firstRowTestAsJson))
 	testDB.ExpectGet().WithDocID(followingHash).WillReturnError(&kivik.Error{HTTPStatus: http.StatusNotFound, Err: nil})
 	testDB.ExpectPut().WithDocID(followingHash).WillReturn("ok")
-	db := client.DB(context.TODO(), "_korto")
-	s, url, err := CommitURL(db, []byte(secondRowTest.LongUrl))
+	s, url, err := refDb.CommitURL([]byte(secondRowTest.LongUrl))
 	if err != nil {
 		panic(fmt.Sprintf("[USE-000-02T07] Malformed mock data %s", err))
 	}

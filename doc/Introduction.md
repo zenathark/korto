@@ -105,3 +105,4 @@ You can see the design of the different services on the following sections:
 1. `[TECH-000] Registration Service Implementation`
 1. `[TECH-F00] Database document definition`
 1. `[TECH-F01] Database long-url search`
+1. `[TECH-F02] Database synchronization`

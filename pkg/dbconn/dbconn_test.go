@@ -74,7 +74,7 @@ func TestExists(t *testing.T) {
 	refDb, testDB := genMockDB()
 	testDB.ExpectGet().WithDocID("short_url").WillReturn(kivikmock.DocumentT(t,
 		`{"_id":"short_url", "long_url":"long_url", "created_at":"2018-09-22T16:35:08+07:00"}`))
-	_, err := refDb.exists("short_url")
+	_, err := refDb.GetLongUrl("short_url")
 	assert.Nil(t, err, "[USE-000-02T03] Unable to retrieve expected key: test-url")
 }
 

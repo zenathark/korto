@@ -31,7 +31,7 @@ type ShortUrlDB struct {
 }
 
 // NewShortUrlDB returns an instance of ShortUrlDB that holds a reference to a couch `database`. If the server
-// is unreachable or the database does not exists, the function returns an error
+// is unreachable or the database does not GetLongUrl, the function returns an error
 func NewShortUrlDB(address string, database string) (*ShortUrlDB, error) {
 	c, err := kivik.New("couch", address)
 	if err != nil {
@@ -51,9 +51,18 @@ func WithDatabase(db *kivik.DB) *ShortUrlDB {
 	return &ShortUrlDB{db}
 }
 
-// exists checks for the `key` to exists on the database `db`. If key exists on the
+// exists returns true if the given `key` exists in the database, false otherwise or if there was an error.
+func (c *ShortUrlDB) exists(key string) bool {
+	s, _ := c.GetLongUrl(key)
+	if s != nil {
+		return true
+	}
+	return false
+}
+
+// GetLongUrl checks for the `key` to GetLongUrl on the database `db`. If key GetLongUrl on the
 // database, the row associated is returned, otherwise, the function returns an error.
-func (c *ShortUrlDB) exists(key string) (*ShortUrlRecord, error) {
+func (c *ShortUrlDB) GetLongUrl(key string) (*ShortUrlRecord, error) {
 	var r ShortUrlRecord
 	err := c.db.Get(context.TODO(), key).ScanDoc(&r)
 	if err != nil {
@@ -68,14 +77,16 @@ func (c *ShortUrlDB) exists(key string) (*ShortUrlRecord, error) {
 	}
 }
 
-// existsLongUrl checks if the longUrl exists on the database `db`. If longUrl exists on the
+
+
+// existsLongUrl checks if the longUrl GetLongUrl on the database `db`. If longUrl GetLongUrl on the
 // database, the row associated is returned otherwise, an shortUrl pointing to an empty block
 // is returned.
 func (c *ShortUrlDB) existsLongUrl(longUrl []byte) (*ShortUrlRecord, *string, error) {
 	hashGenerator := hash(longUrl)
 	for h := range hashGenerator {
 		url := genShortUrl(h)
-		r, err := c.exists(url)
+		r, err := c.GetLongUrl(url)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -99,21 +110,21 @@ func (c *ShortUrlDB) saveUrl(url ShortUrlRecord) error {
 	return nil
 }
 
-// GenerateURL returns a new short url that doesn't exists on the database at the time of
+// GenerateURL returns a new short url that doesn't GetLongUrl on the database at the time of
 // the call.
 func (c *ShortUrlDB) GenerateURL(longUrl []byte) (*string, error) {
 	key := hash(longUrl)
 	defer close(key)
 	for e := range key {
 		url := genShortUrl(e)
-		if _, err := c.exists(url); err != nil {
+		if _, err := c.GetLongUrl(url); err != nil {
 			return &url, nil
 		}
 	}
 	return nil, errors.New("[USE-000-02E02] Unexpected error when generating url")
 }
 
-// CommitURL tries to save the new short url, if the short url already exists, the function
+// CommitURL tries to save the new short url, if the short url already GetLongUrl, the function
 // returns the row associated, otherwise returns the assigned short Url.
 // IF saveUrl fails, the function will retry up to 3 times before returning an error.
 func (c *ShortUrlDB) CommitURL(longUrl []byte) (*ShortUrlRecord, *string, error) {
